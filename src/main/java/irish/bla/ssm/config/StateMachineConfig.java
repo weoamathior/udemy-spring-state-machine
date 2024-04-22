@@ -2,8 +2,11 @@ package irish.bla.ssm.config;
 
 import irish.bla.ssm.domain.PaymentEvent;
 import irish.bla.ssm.domain.PaymentState;
+import irish.bla.ssm.service.PaymentService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.support.MessageBuilder;
+import org.springframework.statemachine.action.Action;
 import org.springframework.statemachine.config.EnableStateMachineFactory;
 import org.springframework.statemachine.config.StateMachineConfigurerAdapter;
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
@@ -13,6 +16,7 @@ import org.springframework.statemachine.listener.StateMachineListenerAdapter;
 import org.springframework.statemachine.state.State;
 
 import java.util.EnumSet;
+import java.util.Random;
 
 @Slf4j
 @EnableStateMachineFactory
@@ -33,6 +37,7 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
     public void configure(StateMachineTransitionConfigurer<PaymentState, PaymentEvent> transitions) throws Exception {
         transitions.withExternal()
                 .source(PaymentState.NEW).target(PaymentState.NEW).event(PaymentEvent.PRE_AUTHORIZE)
+                .action(preAuthAction())
                 .and()
                 .withExternal().source(PaymentState.NEW).target(PaymentState.PRE_AUTH).event(PaymentEvent.PRE_AUTH_APPROVED)
                 .and()
@@ -41,12 +46,31 @@ public class StateMachineConfig extends StateMachineConfigurerAdapter<PaymentSta
 
     @Override
     public void configure(StateMachineConfigurationConfigurer<PaymentState, PaymentEvent> config) throws Exception {
-        StateMachineListenerAdapter<PaymentState,PaymentEvent> adapter = new StateMachineListenerAdapter<>()  {
+        StateMachineListenerAdapter<PaymentState, PaymentEvent> adapter = new StateMachineListenerAdapter<>() {
             @Override
             public void stateChanged(State<PaymentState, PaymentEvent> from, State<PaymentState, PaymentEvent> to) {
                 log.info(String.format("stateChanged(from: %s, to: %s", from + "", to + ""));
             }
         };
         config.withConfiguration().listener(adapter);
+    }
+
+    public Action<PaymentState, PaymentEvent> preAuthAction() {
+        return stateContext -> {
+            System.out.println("PreAuth was called!");
+
+            if (new Random().nextInt(10) < 8) {
+                System.out.println("Approved!");
+                stateContext.getStateMachine().sendEvent(MessageBuilder.withPayload(PaymentEvent.PRE_AUTH_APPROVED)
+                        .setHeader(PaymentService.PAYMENT_ID_HEADER, stateContext.getMessageHeader(PaymentService.PAYMENT_ID_HEADER))
+                        .build());
+            } else {
+                System.out.println("Declined!");
+                stateContext.getStateMachine().sendEvent(MessageBuilder.withPayload(PaymentEvent.PRE_AUTH_DECLINED)
+                        .setHeader(PaymentService.PAYMENT_ID_HEADER, stateContext.getMessageHeader(PaymentService.PAYMENT_ID_HEADER))
+                        .build());
+
+            }
+        };
     }
 }

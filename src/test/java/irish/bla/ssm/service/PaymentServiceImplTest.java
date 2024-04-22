@@ -38,6 +38,8 @@ class PaymentServiceImplTest {
         Payment retrievedPayment = paymentRepository.findById(savedPayment.getId()).orElseThrow();
 
         System.out.println("--------------");
+        System.out.println("Should be PRE_AUTH or PRE_AUTH_ERROR");
+        System.out.println(sm.getState().getId());
         System.out.println(retrievedPayment);
         System.out.println("--------------");
 
