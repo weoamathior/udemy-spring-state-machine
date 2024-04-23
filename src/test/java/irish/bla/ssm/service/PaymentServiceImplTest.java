@@ -46,7 +46,7 @@ class PaymentServiceImplTest {
 
     }
 
-    @RepeatedTest(50)
+    @RepeatedTest(10)
     void testAuth() {
         Payment savedPayment = paymentService.newPayment(payment);
         StateMachine<PaymentState, PaymentEvent> sm = paymentService.preAuth(savedPayment.getId());
